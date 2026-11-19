@@ -556,33 +556,13 @@
     <div class="page-scroll" style="padding-top:70px">
       <div class="section-header">
         <span class="section-title">הורדות</span>
-        <span class="section-more">ניהול</span>
+        <span class="section-more" onclick="showToast('ניהול הורדות')">ניהול</span>
       </div>
-      <div class="download-item">
-        <div class="download-thumb">🕷️</div>
-        <div class="download-info">
-          <div class="download-title">ספיידרמן: בלי דרך הביתה</div>
-          <div class="download-size">1.8 GB • MKV • 1080p</div>
-          <div class="download-progress-bar"><div class="download-progress-fill" style="width:100%"></div></div>
-          <div class="download-status">✅ הושלם</div>
-        </div>
-      </div>
-      <div class="download-item">
-        <div class="download-thumb">💣</div>
-        <div class="download-info">
-          <div class="download-title">אופנהיימר</div>
-          <div class="download-size">2.1 GB • MKV • 4K</div>
-          <div class="download-progress-bar"><div class="download-progress-fill" style="width:67%" id="dlProgress"></div></div>
-          <div class="download-status" id="dlStatus">⬇️ מוריד... 67%</div>
-        </div>
-      </div>
-      <div class="download-item">
-        <div class="download-thumb">🏜️</div>
-        <div class="download-info">
-          <div class="download-title">דיוני 2</div>
-          <div class="download-size">2.4 GB • MKV • 4K</div>
-          <div class="download-progress-bar"><div class="download-progress-fill" style="width:0%"></div></div>
-          <div class="download-status" style="color:var(--text3)">⏳ ממתין</div>
+      <div id="downloadsContainer">
+        <div style="text-align:center;padding:60px 20px;color:#888">
+          <div style="font-size:50px;margin-bottom:16px">⬇️</div>
+          <div style="font-size:18px;font-weight:600;color:#ccc">אין הורדות</div>
+          <div style="font-size:14px;margin-top:8px">חפש סרט ולחץ על הורד</div>
         </div>
       </div>
     </div>
@@ -748,52 +728,238 @@
   </div>
 </div>
 
+<!-- SEARCH RESULTS OVERLAY -->
+<div id="searchResultsOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#08090D;z-index:200;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:12px;padding:50px 16px 12px;border-bottom:1px solid #1a1a2e">
+    <button onclick="closeSearch()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px">✕</button>
+    <div style="flex:1;font-size:16px;color:#fff;font-weight:600">תוצאות חיפוש</div>
+  </div>
+  <div id="searchResultsList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
+// =====================================================
+// STATE
+// =====================================================
 var currentPage = 'home';
 var currentSheetTitle = '';
-var tgStep = 'phone'; // phone, code
+var currentSheetData = {};
+var tgStep = 'phone';
+var searchResults = [];
+var activeBotUsername = 'King_Of_Telegram_Beta_bot';
 var playerInterval = null;
 var playerPos = 35;
 
-function switchPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  document.getElementById('nav-'+name).classList.add('active');
-  currentPage = name;
-  // Hide topbar logo on some pages
-  document.getElementById('topbar').style.display = (name === 'settings') ? 'flex' : 'flex';
+// =====================================================
+// NATIVE BRIDGE
+// =====================================================
+function callNative(method) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  if (window.StreamLinkNative && typeof window.StreamLinkNative[method] === 'function') {
+    return window.StreamLinkNative[method].apply(window.StreamLinkNative, args);
+  }
+  return null;
 }
 
+// =====================================================
+// TELEGRAM STATE CALLBACKS (called by Android)
+// =====================================================
+window.onTelegramState = function(state) {
+  console.log('TG state: ' + state);
+  var btn = document.getElementById('tgBtn');
+  var title = document.getElementById('tgTitle');
+  var sub = document.getElementById('tgSub');
+  var input = document.getElementById('tgInput');
+  if (!btn) return;
+
+  if (state === 'WaitingForCode') {
+    tgStep = 'code';
+    title.textContent = 'הכנס קוד אימות';
+    sub.textContent = 'קוד בן 5 ספרות נשלח לטלגרם שלך';
+    input.type = 'number';
+    input.placeholder = '12345';
+    input.value = '';
+    btn.textContent = 'אמת';
+    btn.disabled = false;
+  } else if (state === 'WaitingForPassword') {
+    tgStep = 'password';
+    title.textContent = 'סיסמת ענן 2FA';
+    sub.textContent = 'הכנס את סיסמת ה-2FA שלך';
+    input.type = 'password';
+    input.placeholder = '••••••••';
+    input.value = '';
+    btn.textContent = 'אמת';
+    btn.disabled = false;
+  } else if (state === 'Ready') {
+    closeTgScreen();
+    showToast('✅ מחובר לטלגרם בהצלחה!');
+    var badge = document.querySelector('.source-badge');
+    if (badge) badge.textContent = 'מחובר';
+  }
+};
+
+// =====================================================
+// SEARCH CALLBACKS (called by Android)
+// =====================================================
+window.onSearchResults = function(results) {
+  searchResults = results;
+  var container = document.getElementById('searchResultsList');
+  if (!container) return;
+
+  if (!results || results.length === 0) {
+    container.innerHTML =
+      '<div style="text-align:center;padding:40px;color:#888">' +
+      '<div style="font-size:40px;margin-bottom:12px">🔍</div>' +
+      '<div style="font-size:16px">לא נמצאו תוצאות</div>' +
+      '<div style="font-size:13px;margin-top:8px">נסה מילות חיפוש אחרות</div></div>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    html += '<div class="result-item" onclick="pickResult(' + r.index + ',\'' +
+      esc(r.title) + '\',' + (r.msgId||0) + ',' + (r.chatId||0) + ')">' +
+      '<div class="result-num">' + (r.index||i+1) + '</div>' +
+      '<div style="flex:1">' +
+        '<div style="font-size:15px;color:#fff;margin-bottom:4px">' + r.title + '</div>' +
+        '<div style="font-size:12px;color:#888">' + (r.year||'') + (r.quality ? ' · <span style="color:var(--accent)">' + r.quality + '</span>' : '') + '</div>' +
+      '</div>' +
+      '<div style="color:#666;font-size:20px">›</div>' +
+    '</div>';
+  }
+  container.innerHTML = html;
+};
+
+window.onFileReady = function(file) {
+  showToast('✅ הקובץ מוכן — מוריד...');
+  callNative('startDownload', file.fileName || 'movie', file.fileName || 'movie', file.fileId, file.fileSize || 0);
+};
+
+window.onFileError = function(err) {
+  showToast('❌ שגיאה: ' + err);
+};
+
+// =====================================================
+// DOWNLOADS CALLBACKS (called by Android)
+// =====================================================
+window.onDownloadsUpdate = function(list) {
+  var container = document.getElementById('downloadsContainer');
+  if (!container) return;
+  if (!list || list.length === 0) {
+    container.innerHTML =
+      '<div style="text-align:center;padding:60px 20px;color:#888">' +
+      '<div style="font-size:50px;margin-bottom:16px">⬇️</div>' +
+      '<div style="font-size:18px;font-weight:600;color:#ccc">אין הורדות</div>' +
+      '<div style="font-size:14px;margin-top:8px">חפש סרט ולחץ על הורד</div></div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < list.length; i++) {
+    var d = list[i];
+    var pct = d.total > 0 ? Math.round(d.downloaded * 100 / d.total) : 0;
+    var statusMap = {
+      'PENDING':'⏳ ממתין','DOWNLOADING':'⬇️ מוריד... '+pct+'%',
+      'COMPLETED':'✅ הושלם','FAILED':'❌ נכשל','CANCELLED':'⛔ בוטל'
+    };
+    var statusText = statusMap[d.status] || d.status;
+    var canPlay = d.status === 'COMPLETED' && d.path;
+    html += '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid #1a1a2e">' +
+      '<div style="width:50px;height:70px;background:#1a1a2e;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎬</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + d.title + '</div>' +
+        '<div style="font-size:11px;color:#888;margin:4px 0">' + formatBytes(d.total) + '</div>' +
+        '<div style="height:3px;background:#1a1a2e;border-radius:2px;margin:6px 0">' +
+          '<div style="height:100%;width:' + pct + '%;background:var(--accent);border-radius:2px;transition:width 0.3s"></div>' +
+        '</div>' +
+        '<div style="font-size:12px;color:#aaa">' + statusText + '</div>' +
+      '</div>' +
+      (canPlay ? '<button onclick="callNative(\'playFile\',\'' + esc(d.path) + '\',\'' + esc(d.title) + '\')" style="background:var(--accent);border:none;color:#fff;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:16px;flex-shrink:0">▶</button>' : '') +
+    '</div>';
+  }
+  container.innerHTML = html;
+};
+
+// =====================================================
+// NAVIGATION
+// =====================================================
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  var pg = document.getElementById('page-' + name);
+  var nav = document.getElementById('nav-' + name);
+  if (pg) pg.classList.add('active');
+  if (nav) nav.classList.add('active');
+  currentPage = name;
+}
+
+// =====================================================
+// SEARCH UI
+// =====================================================
 function openSearch() {
   document.getElementById('searchBar').classList.add('active');
-  setTimeout(() => document.getElementById('searchInput').focus(), 100);
+  document.getElementById('searchResultsOverlay').style.display = 'flex';
+  document.getElementById('searchResultsList').innerHTML =
+    '<div style="text-align:center;padding:40px;color:#666">' +
+    '<div style="font-size:40px;margin-bottom:12px">🎬</div>' +
+    '<div>הקלד שם סרט או סדרה לחיפוש</div></div>';
+  setTimeout(function() { document.getElementById('searchInput').focus(); }, 100);
 }
 
 function closeSearch() {
   document.getElementById('searchBar').classList.remove('active');
   document.getElementById('searchInput').value = '';
+  document.getElementById('searchResultsOverlay').style.display = 'none';
 }
 
 function onSearchKey(e) {
   if (e.key === 'Enter') {
     var q = document.getElementById('searchInput').value.trim();
-    if (q) searchMovies(q);
+    if (q) doSearch(q);
   }
 }
 
-function searchMovies(query) {
-  closeSearch();
-  showToast('מחפש: ' + query + '...');
-  // כאן יתחבר לבוט טלגרם
-  setTimeout(() => {
-    showToast('נמצאו תוצאות עבור: ' + query);
-  }, 1500);
+function doSearch(query) {
+  document.getElementById('searchResultsList').innerHTML =
+    '<div style="text-align:center;padding:40px;color:#888">' +
+    '<div class="spinner" style="margin:0 auto 16px"></div>' +
+    '<div>מחפש: ' + query + '</div></div>';
+
+  if (window.StreamLinkNative) {
+    callNative('searchBot', activeBotUsername, query);
+  } else {
+    // Demo mode — fake results
+    setTimeout(function() {
+      window.onSearchResults([
+        {index:1, title:query + ' (2024)', year:'2024', quality:'4K', msgId:0, chatId:0},
+        {index:2, title:query + ' Extended Cut', year:'2023', quality:'1080p', msgId:0, chatId:0},
+        {index:3, title:query + ' Remastered', year:'2022', quality:'4K', msgId:0, chatId:0},
+        {index:4, title:'The ' + query, year:'2023', quality:'1080p', msgId:0, chatId:0},
+        {index:5, title:query + ' 2', year:'2024', quality:'720p', msgId:0, chatId:0}
+      ]);
+    }, 1200);
+  }
 }
 
+function pickResult(index, title, msgId, chatId) {
+  showToast('⏳ מביא: ' + title);
+  if (window.StreamLinkNative) {
+    callNative('selectSearchResult', index, title, msgId || 0, chatId || 0);
+  } else {
+    // Demo mode
+    setTimeout(function() {
+      showToast('🎬 פותח סרט: ' + title);
+      closeSearch();
+    }, 1500);
+  }
+}
+
+// =====================================================
+// SHEET
+// =====================================================
 function openSheet(title, rating, year, duration, genre, desc) {
   currentSheetTitle = title;
   document.getElementById('sheetTitle').textContent = title;
@@ -815,7 +981,9 @@ function closeSheet() {
 
 function watchFromSheet() {
   closeSheet();
-  openPlayer(currentSheetTitle);
+  openSearch();
+  document.getElementById('searchInput').value = currentSheetTitle;
+  doSearch(currentSheetTitle);
 }
 
 function saveFromSheet() {
@@ -823,19 +991,9 @@ function saveFromSheet() {
   closeSheet();
 }
 
-function getEmoji(genre) {
-  if (genre.includes('פעולה')) return '💥';
-  if (genre.includes('קומדיה')) return '😄';
-  if (genre.includes('דרמה')) return '🎭';
-  if (genre.includes('מד"ב') || genre.includes('מד')) return '🚀';
-  if (genre.includes('פשע')) return '🔪';
-  if (genre.includes('אנימציה')) return '🎨';
-  if (genre.includes('ריגול')) return '🕵️';
-  if (genre.includes('היסטוריה')) return '📜';
-  if (genre.includes('פנטזיה')) return '🐉';
-  return '🎬';
-}
-
+// =====================================================
+// PLAYER
+// =====================================================
 function openPlayer(title) {
   document.getElementById('playerTitle').textContent = title;
   document.getElementById('playerMovieTitle').textContent = title;
@@ -861,28 +1019,30 @@ function togglePlay(btn) {
 
 function startPlayerProgress() {
   if (playerInterval) clearInterval(playerInterval);
-  playerInterval = setInterval(() => {
+  playerInterval = setInterval(function() {
     playerPos = Math.min(playerPos + 0.1, 100);
     var pct = playerPos.toFixed(1);
-    document.getElementById('playerProgressFill').style.width = pct + '%';
-    var totalSec = 109 * 60;
-    var curSec = Math.round(totalSec * playerPos / 100);
-    document.getElementById('playerTime').textContent = formatTime(curSec) + ' / 1:49:00';
+    var fill = document.getElementById('playerProgressFill');
+    var time = document.getElementById('playerTime');
+    if (fill) fill.style.width = pct + '%';
+    if (time) {
+      var totalSec = 109 * 60;
+      var curSec = Math.round(totalSec * playerPos / 100);
+      time.textContent = formatTime(curSec) + ' / 1:49:00';
+    }
   }, 1000);
 }
 
 function seekVideo(e) {
   var rect = e.currentTarget.getBoundingClientRect();
   playerPos = ((e.clientX - rect.left) / rect.width) * 100;
-  document.getElementById('playerProgressFill').style.width = playerPos + '%';
+  var fill = document.getElementById('playerProgressFill');
+  if (fill) fill.style.width = playerPos + '%';
 }
 
-function formatTime(sec) {
-  var m = Math.floor(sec / 60);
-  var s = sec % 60;
-  return m + ':' + (s < 10 ? '0' : '') + s;
-}
-
+// =====================================================
+// TELEGRAM LOGIN
+// =====================================================
 function showTelegramLogin() {
   tgStep = 'phone';
   document.getElementById('tgTitle').textContent = 'התחבר לטלגרם';
@@ -891,6 +1051,7 @@ function showTelegramLogin() {
   document.getElementById('tgInput').placeholder = '+972501234567';
   document.getElementById('tgInput').value = '';
   document.getElementById('tgBtn').textContent = 'שלח קוד';
+  document.getElementById('tgBtn').disabled = false;
   document.getElementById('tgScreen').classList.add('active');
 }
 
@@ -900,68 +1061,89 @@ function closeTgScreen() {
 
 function tgAction() {
   var val = document.getElementById('tgInput').value.trim();
-  if (!val) { showToast('אנא הכנס ' + (tgStep === 'phone' ? 'מספר טלפון' : 'קוד אימות')); return; }
+  if (!val) { showToast('אנא הכנס ערך'); return; }
+  document.getElementById('tgBtn').disabled = true;
+  document.getElementById('tgBtn').textContent = '⏳';
 
-  if (tgStep === 'phone') {
-    document.getElementById('tgBtn').textContent = 'שולח...';
-    document.getElementById('tgBtn').disabled = true;
-    // כאן יישלח הקוד דרך TDLib
-    if (window.StreamLinkNative) {
-      window.StreamLinkNative.sendTelegramCode(val);
-    } else {
-      setTimeout(() => {
-        tgStep = 'code';
-        document.getElementById('tgTitle').textContent = 'הכנס קוד אימות';
-        document.getElementById('tgSub').textContent = 'קוד בן 5 ספרות נשלח ל-' + val;
-        document.getElementById('tgInput').type = 'number';
-        document.getElementById('tgInput').placeholder = '12345';
-        document.getElementById('tgInput').value = '';
-        document.getElementById('tgBtn').textContent = 'אמת';
-        document.getElementById('tgBtn').disabled = false;
-      }, 1500);
-    }
+  if (window.StreamLinkNative) {
+    if (tgStep === 'phone') callNative('sendTelegramCode', val);
+    else if (tgStep === 'code') callNative('verifyTelegramCode', val);
+    else if (tgStep === 'password') callNative('verifyTelegramPassword', val);
   } else {
-    document.getElementById('tgBtn').textContent = 'מתחבר...';
-    document.getElementById('tgBtn').disabled = true;
-    if (window.StreamLinkNative) {
-      window.StreamLinkNative.verifyTelegramCode(val);
-    } else {
-      setTimeout(() => {
-        closeTgScreen();
-        showToast('✅ מחובר לטלגרם בהצלחה!');
-        document.getElementById('tgBtn').disabled = false;
-      }, 1500);
-    }
+    // Demo mode
+    setTimeout(function() {
+      if (tgStep === 'phone') {
+        window.onTelegramState('WaitingForCode');
+      } else {
+        window.onTelegramState('Ready');
+      }
+    }, 1500);
   }
 }
 
+// =====================================================
+// SOURCES
+// =====================================================
+function showAddSource() {
+  var username = prompt('שם משתמש של הבוט (ללא @):');
+  if (username) {
+    activeBotUsername = username.replace('@', '');
+    callNative('setActiveBotUsername', activeBotUsername);
+    showToast('✅ בוט הוגדר: @' + activeBotUsername);
+  }
+}
+
+// =====================================================
+// LIBRARY TABS
+// =====================================================
 function switchLibTab(el, tab) {
-  document.querySelectorAll('.lib-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.lib-tab').forEach(function(t) { t.classList.remove('active'); });
   el.classList.add('active');
 }
 
-function showAddSource() {
-  showToast('חיבור מקור חדש — בקרוב');
-}
-
+// =====================================================
+// TOAST
+// =====================================================
 function showToast(msg) {
   var t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  setTimeout(function() { t.classList.remove('show'); }, 2800);
 }
 
-// Simulate download progress
-var dlPct = 67;
-setInterval(() => {
-  if (dlPct < 100) {
-    dlPct = Math.min(dlPct + 0.5, 100);
-    var el = document.getElementById('dlProgress');
-    var st = document.getElementById('dlStatus');
-    if (el) el.style.width = dlPct.toFixed(0) + '%';
-    if (st) st.textContent = dlPct >= 100 ? '✅ הושלם' : '⬇️ מוריד... ' + dlPct.toFixed(0) + '%';
-  }
-}, 2000);
+// =====================================================
+// HELPERS
+// =====================================================
+function getEmoji(genre) {
+  if (!genre) return '🎬';
+  if (genre.includes('פעולה')) return '💥';
+  if (genre.includes('קומדיה')) return '😄';
+  if (genre.includes('דרמה')) return '🎭';
+  if (genre.includes('מד')) return '🚀';
+  if (genre.includes('פשע')) return '🔪';
+  if (genre.includes('אנימציה')) return '🎨';
+  if (genre.includes('ריגול')) return '🕵️';
+  if (genre.includes('היסטוריה')) return '📜';
+  if (genre.includes('פנטזיה')) return '🐉';
+  return '🎬';
+}
+
+function formatTime(sec) {
+  var m = Math.floor(sec / 60);
+  var s = sec % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function formatBytes(b) {
+  if (!b || b === 0) return '—';
+  if (b > 1073741824) return (b / 1073741824).toFixed(1) + ' GB';
+  if (b > 1048576) return (b / 1048576).toFixed(0) + ' MB';
+  return (b / 1024).toFixed(0) + ' KB';
+}
+
+function esc(s) {
+  return (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, ' ');
+}
 </script>
 </body>
 </html>

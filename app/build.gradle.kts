@@ -117,6 +117,9 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
 
+    // TDLib via JitPack
+    implementation("com.github.tdlibx:td:v1.8.49")
+
     // Security
     implementation(libs.security.crypto)
     implementation(libs.biometric)

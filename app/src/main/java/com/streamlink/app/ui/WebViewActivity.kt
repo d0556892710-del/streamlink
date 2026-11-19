@@ -3,15 +3,17 @@ package com.streamlink.app.ui
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.webkit.*
-import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class WebViewActivity : ComponentActivity() {
+class WebViewActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var bridge: StreamLinkBridge
+    private val viewModel: MainViewModel by viewModels()
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,40 +36,33 @@ class WebViewActivity : ComponentActivity() {
             cacheMode = WebSettings.LOAD_NO_CACHE
         }
 
-        webView.addJavascriptInterface(StreamLinkBridge(this, webView), "StreamLinkNative")
+        bridge = StreamLinkBridge(this, webView, viewModel)
+        webView.addJavascriptInterface(bridge, "StreamLinkNative")
 
         webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                return false
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = false
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                android.util.Log.e("WebView", "Error: ${error.description}")
+            }
+        }
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
+                android.util.Log.d("WebView-JS", "${msg.message()} [${msg.sourceId()}:${msg.lineNumber()}]")
+                return true
             }
         }
 
         webView.loadUrl("file:///android_asset/www/index.html")
 
-        // Handle back press
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    webView.goBack()
-                } else {
-                    finish()
-                }
+                if (webView.canGoBack()) webView.goBack() else finish()
             }
         })
     }
 
-    override fun onResume() {
-        super.onResume()
-        webView.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        webView.onPause()
-    }
-
-    override fun onDestroy() {
-        webView.destroy()
-        super.onDestroy()
-    }
+    override fun onResume()  { super.onResume();  webView.onResume()  }
+    override fun onPause()   { super.onPause();   webView.onPause()   }
+    override fun onDestroy() { bridge.destroy();  webView.destroy();  super.onDestroy() }
 }
