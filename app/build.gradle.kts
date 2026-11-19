@@ -118,7 +118,7 @@ dependencies {
     implementation(libs.gson)
 
     // TDLib via JitPack
-    implementation("com.github.tdlibx:td:v1.8.49")
+    implementation("com.github.tdlibx:td:1.8.56")
 
     // Security
     implementation(libs.security.crypto)
