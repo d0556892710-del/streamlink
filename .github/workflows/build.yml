@@ -22,14 +22,11 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Create local.properties
         run: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          echo "TELEGRAM_API_ID=${{ secrets.TELEGRAM_API_ID }}" >> local.properties
-          echo "TELEGRAM_API_HASH=${{ secrets.TELEGRAM_API_HASH }}" >> local.properties
+          echo "TELEGRAM_API_ID=${{ secrets.TELEGRAM_API_ID || '35761916' }}" >> local.properties
+          echo "TELEGRAM_API_HASH=${{ secrets.TELEGRAM_API_HASH || 'ddf61fb8a75503cda438746b97f290d9' }}" >> local.properties
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
