@@ -3,13 +3,13 @@ package com.streamlink.app.ui
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.webkit.*
+import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class WebViewActivity : AppCompatActivity() {
+class WebViewActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private lateinit var bridge: StreamLinkBridge
