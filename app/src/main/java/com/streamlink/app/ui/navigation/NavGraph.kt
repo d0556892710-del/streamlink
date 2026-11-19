@@ -1,6 +1,7 @@
 package com.streamlink.app.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -37,11 +38,13 @@ sealed class Screen(val route: String) {
 @Composable
 fun StreamLinkNavGraph(
     navController: NavHostController,
+    modifier: Modifier = Modifier,
     startDestination: String = Screen.Home.route
 ) {
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        modifier = modifier
     ) {
         composable(Screen.Home.route) {
             HomeScreen(
