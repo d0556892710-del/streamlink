@@ -1,34 +1,5 @@
 #!/bin/sh
-#
-# Copyright © 2015-2021 the original authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      https://www.apache.org/licenses/LICENSE-2.0
-#
-# Gradle wrapper script for Unix/Linux/macOS
-
-##############################################################################
-# JAVA OPTIONS
-##############################################################################
-DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
-
-##############################################################################
-# Functions
-##############################################################################
-
-die() {
-  echo
-  echo "ERROR: $*" >&2
-  echo
-  exit 1
-}
-
-warn() {
-  echo "WARNING: $*"
-}
+# Gradle start up script for UNIX
 
 ##############################################################################
 # Determine the Java command to use to start the JVM.
@@ -40,13 +11,14 @@ if [ -n "$JAVA_HOME" ] ; then
         JAVACMD="$JAVA_HOME/bin/java"
     fi
     if [ ! -x "$JAVACMD" ] ; then
-        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME"
+        echo "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME" >&2
+        exit 1
     fi
 else
     JAVACMD=java
-    if ! command -v java >/dev/null 2>&1
-    then
-        die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."
+    if ! command -v java >/dev/null 2>&1 ; then
+        echo "ERROR: JAVA_HOME is not set and no 'java' command could be found." >&2
+        exit 1
     fi
 fi
 
@@ -54,13 +26,11 @@ fi
 # Increase the maximum file descriptors if we can.
 ##############################################################################
 MAX_FD=maximum
+ulimit -n $MAX_FD 2>/dev/null || true
 
-warn ""
-if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
-    APP_HOME=$(cygpath --path --mixed "$APP_HOME")
-fi
-
-GRADLE_OPTS="$GRADLE_OPTS \"-Dorg.gradle.daemon=false\""
+# Determine the script directory
+APP_HOME="$(cd "$(dirname "$0")" && pwd)"
+APP_BASE_NAME="$(basename "$0")"
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
@@ -68,7 +38,8 @@ CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 # Execute Gradle
 ##############################################################################
 exec "$JAVACMD" \
-  $DEFAULT_JVM_OPTS \
+  -Xmx64m \
+  -Xms64m \
   $JAVA_OPTS \
   $GRADLE_OPTS \
   "-Dorg.gradle.appname=$APP_BASE_NAME" \
