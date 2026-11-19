@@ -122,8 +122,8 @@ interface PlaybackProgressDao {
     @Query("UPDATE playback_progress SET watched = 1, updatedAt = :timestamp WHERE userId = :userId AND mediaItemId = :mediaItemId")
     suspend fun markAsWatched(userId: String, mediaItemId: String, timestamp: Long)
 
-    @Query("SELECT * FROM playback_progress WHERE synced = 0")
-    suspend fun getUnsyncedProgress(): List<PlaybackProgressEntity>
+    @Query("SELECT * FROM playback_progress WHERE watched = 0")
+    suspend fun getUnwatchedProgress(): List<PlaybackProgressEntity>
 }
 
 @Dao
