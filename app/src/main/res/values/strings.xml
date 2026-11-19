@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StreamLink</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">בית</string>
+    <string name="nav_library">ספרייה</string>
+    <string name="nav_downloads">הורדות</string>
+    <string name="nav_sources">מקורות</string>
+    <string name="nav_settings">הגדרות</string>
+
+    <!-- Home -->
+    <string name="continue_watching">המשך צפייה</string>
+    <string name="more_info">מידע נוסף</string>
+    <string name="recently_added">נוספו לאחרונה</string>
+    <string name="recently_watched">נצפו לאחרונה</string>
+    <string name="my_series">הסדרות שלי</string>
+    <string name="my_movies">הסרטים שלי</string>
+    <string name="new_episodes">פרקים חדשים</string>
+
+    <!-- Library -->
+    <string name="all">הכל</string>
+    <string name="movies">סרטים</string>
+    <string name="series">סדרות</string>
+    <string name="downloads">הורדות</string>
+    <string name="unfinished">לא הושלם</string>
+    <string name="search">חיפוש</string>
+    <string name="sort">מיון</string>
+    <string name="filter">סינון</string>
+
+    <!-- Player -->
+    <string name="play">נגן</string>
+    <string name="pause">השהה</string>
+    <string name="next_episode">פרק הבא</string>
+    <string name="previous_episode">פרק קודם</string>
+    <string name="episode_list">רשימת פרקים</string>
+    <string name="playback_speed">מהירות ניגון</string>
+    <string name="subtitles">כתוביות</string>
+    <string name="audio_track">ערוץ שמע</string>
+
+    <!-- Sources -->
+    <string name="add_source">הוסף מקור</string>
+    <string name="telegram_source">מקור Telegram</string>
+    <string name="disconnect">נתק</string>
+    <string name="connected">מחובר</string>
+    <string name="disconnected">מנותק</string>
+
+    <!-- Download -->
+    <string name="downloading">מוריד...</string>
+    <string name="download_complete">ההורדה הושלמה</string>
+    <string name="download_failed">ההורדה נכשלה</string>
+    <string name="retry">נסה שוב</string>
+    <string name="cancel">ביטול</string>
+
+    <!-- General -->
+    <string name="loading">טוען...</string>
+    <string name="error">שגיאה</string>
+    <string name="ok">אישור</string>
+    <string name="save">שמור</string>
+    <string name="edit">עריכה</string>
+    <string name="delete">מחיקה</string>
+    <string name="confirm">אישור</string>
+    <string name="empty_library">הספרייה ריקה\nהוסף מקור כדי להתחיל</string>
+</resources>
