@@ -1,7 +1,9 @@
 package com.streamlink.app.ui
 
+import android.app.Application
+import android.content.Context
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.streamlink.app.telegram.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,10 +13,11 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    application: Application,
     val telegram: TelegramClient,
     val searchEngine: BotSearchEngine,
     val downloadManager: DownloadManager
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     val telegramState = telegram.state
     val downloads = downloadManager.downloads
@@ -93,8 +96,7 @@ class MainViewModel @Inject constructor(
     // ---- Settings ----
 
     private val prefs by lazy {
-        getApplication<android.app.Application>()
-            .getSharedPreferences("streamlink_prefs", android.content.Context.MODE_PRIVATE)
+        application.getSharedPreferences("streamlink_prefs", Context.MODE_PRIVATE)
     }
 
     fun setWifiOnly(enabled: Boolean) {
