@@ -1,6 +1,8 @@
 package com.streamlink.app.ui
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -16,14 +18,18 @@ class StreamLinkBridge(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val gson = Gson()
 
+    init {
+        // Start observing state immediately so auth callbacks reach JS from the start
+        observeTelegramState()
+        observeDownloads()
+    }
+
     // ---- Telegram Auth ----
 
     @JavascriptInterface
     fun sendTelegramCode(phoneNumber: String) {
         Log.d("Bridge", "sendTelegramCode: $phoneNumber")
         viewModel.sendPhone(phoneNumber)
-        // State change will come back via telegramStateChanged callback
-        observeTelegramState()
     }
 
     @JavascriptInterface
@@ -96,8 +102,37 @@ class StreamLinkBridge(
     }
 
     @JavascriptInterface
+    fun cancelDownload(id: String) {
+        Log.d("Bridge", "cancelDownload: $id")
+        viewModel.cancelDownload(id)
+    }
+
+    @JavascriptInterface
+    fun retryDownload(id: String) {
+        Log.d("Bridge", "retryDownload: $id")
+        viewModel.retryDownload(id)
+    }
+
+    @JavascriptInterface
+    fun deleteDownload(id: String) {
+        Log.d("Bridge", "deleteDownload: $id")
+        viewModel.deleteDownload(id)
+    }
+
+    @JavascriptInterface
     fun getDownloadPath(id: String): String {
         return viewModel.getFilePath(id) ?: ""
+    }
+
+    @JavascriptInterface
+    fun streamFile(id: String, title: String) {
+        Log.d("Bridge", "streamFile: $id")
+        val path = viewModel.getStreamablePath(id)
+        if (path != null) {
+            playFile(path, title)
+        } else {
+            callJS("window.onFileError && window.onFileError('הקובץ לא מוכן לנגינה')")
+        }
     }
 
     // ---- Player ----
@@ -168,6 +203,32 @@ class StreamLinkBridge(
                 callJS("window.onDownloadsUpdate && window.onDownloadsUpdate($json)")
             }
         }
+    }
+
+    // ---- Utility / Settings ----
+
+    @JavascriptInterface
+    fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("Bridge", "openUrl failed: $url", e)
+        }
+    }
+
+    @JavascriptInterface
+    fun setWifiOnly(enabled: String) {
+        val on = enabled == "true"
+        Log.d("Bridge", "setWifiOnly: $on")
+        viewModel.setWifiOnly(on)
+    }
+
+    @JavascriptInterface
+    fun setDownloadQuality(quality: String) {
+        Log.d("Bridge", "setDownloadQuality: $quality")
+        viewModel.setDownloadQuality(quality)
     }
 
     private fun callJS(js: String) {

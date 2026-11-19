@@ -27,6 +27,8 @@ class MainViewModel @Inject constructor(
         Log.d("MainViewModel", "Initialized — Telegram state: ${telegramState.value}")
     }
 
+    // ---- Auth ----
+
     fun sendPhone(phone: String) = viewModelScope.launch {
         try { telegram.sendPhoneNumber(phone) }
         catch (e: Exception) { Log.e("MainViewModel", "sendPhone error: ${e.message}") }
@@ -41,6 +43,8 @@ class MainViewModel @Inject constructor(
         try { telegram.sendPassword(pw) }
         catch (e: Exception) { Log.e("MainViewModel", "sendPassword error: ${e.message}") }
     }
+
+    // ---- Search ----
 
     fun search(query: String, onResults: (List<SearchResult>) -> Unit) = viewModelScope.launch {
         try {
@@ -62,11 +66,48 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // ---- Downloads ----
+
     fun startDownload(id: String, title: String, fileId: Int, totalBytes: Long) {
         downloadManager.startDownload(id, title, fileId, totalBytes)
     }
 
+    fun cancelDownload(id: String) {
+        downloadManager.cancelDownload(id)
+    }
+
+    fun retryDownload(id: String) {
+        downloadManager.retryDownload(id)
+    }
+
+    fun deleteDownload(id: String) {
+        downloadManager.deleteDownload(id)
+    }
+
+    /** מחזיר path לנגינה — גם אם ההורדה עדיין בתהליך (streaming) */
+    fun getStreamablePath(id: String): String? = downloadManager.getStreamablePath(id)
+
+    /** מחזיר path רק אם ההורדה הושלמה */
     fun getFilePath(id: String): String? = downloadManager.getDownloadedPath(id)
+
+    // ---- Settings ----
+
+    private val prefs by lazy {
+        getApplication<android.app.Application>()
+            .getSharedPreferences("streamlink_prefs", android.content.Context.MODE_PRIVATE)
+    }
+
+    fun setWifiOnly(enabled: Boolean) {
+        prefs.edit().putBoolean("wifi_only", enabled).apply()
+    }
+
+    fun getWifiOnly(): Boolean = prefs.getBoolean("wifi_only", true)
+
+    fun setDownloadQuality(quality: String) {
+        prefs.edit().putString("download_quality", quality).apply()
+    }
+
+    fun getDownloadQuality(): String = prefs.getString("download_quality", "הכי גבוהה") ?: "הכי גבוהה"
 
     override fun onCleared() {
         super.onCleared()

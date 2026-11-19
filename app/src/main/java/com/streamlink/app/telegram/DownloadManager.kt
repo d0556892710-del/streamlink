@@ -16,10 +16,26 @@ data class Download(
     val totalBytes: Long,
     val downloadedBytes: Long = 0,
     val localPath: String? = null,
-    val status: DownloadStatus = DownloadStatus.PENDING
-)
+    val status: DownloadStatus = DownloadStatus.PENDING,
+    val errorMsg: String? = null
+) {
+    val progressPct: Int get() =
+        if (totalBytes > 0) ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100) else 0
 
-enum class DownloadStatus { PENDING, DOWNLOADING, COMPLETED, FAILED, CANCELLED }
+    val downloadedMb: Float get() = downloadedBytes / 1_048_576f
+    val totalMb: Float get() = totalBytes / 1_048_576f
+
+    /** true כשאפשר להתחיל לנגן גם לפני שההורדה הושלמה */
+    val canStream: Boolean get() = localPath != null || status == DownloadStatus.DOWNLOADING
+}
+
+enum class DownloadStatus {
+    PENDING,
+    DOWNLOADING,
+    COMPLETED,
+    FAILED,
+    CANCELLED
+}
 
 @Singleton
 class DownloadManager @Inject constructor(
@@ -35,33 +51,58 @@ class DownloadManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Map from TDLib fileId → download id (for matching progress updates)
+    private val fileIdToDownloadId = mutableMapOf<Int, String>()
+
     init {
-        // Track TDLib file progress updates
+        // Track TDLib file progress updates in real time
         scope.launch {
             telegram.downloadProgress.collect { progress ->
-                updateDownloadProgress(progress)
+                updateProgress(progress)
             }
         }
     }
 
     fun startDownload(id: String, title: String, fileId: Int, totalBytes: Long) {
-        val download = Download(id, title, fileId, totalBytes, status = DownloadStatus.DOWNLOADING)
+        val existing = _downloads.value[id]
+        if (existing?.status == DownloadStatus.DOWNLOADING ||
+            existing?.status == DownloadStatus.COMPLETED) return
+
+        fileIdToDownloadId[fileId] = id
+
+        val download = Download(
+            id = id,
+            title = title,
+            fileId = fileId,
+            totalBytes = totalBytes,
+            status = DownloadStatus.DOWNLOADING
+        )
         _downloads.value = _downloads.value + (id to download)
 
         scope.launch {
             Log.d(TAG, "Starting download: $title (fileId=$fileId)")
             try {
-                val path = telegram.downloadFile(fileId)
-                val updated = _downloads.value[id]?.copy(
+                // TDLib downloadFile with synchronous=false → we get progress via UpdateFile
+                // then when complete localPath is set
+                val path = telegram.downloadFile(fileId, priority = 1)
+                val current = _downloads.value[id] ?: return@launch
+                _downloads.value = _downloads.value + (id to current.copy(
                     localPath = path,
+                    downloadedBytes = current.totalBytes,
                     status = if (path != null) DownloadStatus.COMPLETED else DownloadStatus.FAILED
-                ) ?: return@launch
-                _downloads.value = _downloads.value + (id to updated)
-                Log.d(TAG, "Download complete: $path")
+                ))
+                if (path != null) {
+                    Log.d(TAG, "Download complete: $path")
+                } else {
+                    Log.e(TAG, "Download returned null path")
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Download failed: ${e.message}")
-                val failed = _downloads.value[id]?.copy(status = DownloadStatus.FAILED) ?: return@launch
-                _downloads.value = _downloads.value + (id to failed)
+                val current = _downloads.value[id] ?: return@launch
+                _downloads.value = _downloads.value + (id to current.copy(
+                    status = DownloadStatus.FAILED,
+                    errorMsg = e.message
+                ))
             }
         }
     }
@@ -69,27 +110,55 @@ class DownloadManager @Inject constructor(
     fun cancelDownload(id: String) {
         val dl = _downloads.value[id] ?: return
         telegram.cancelDownload(dl.fileId)
-        val cancelled = dl.copy(status = DownloadStatus.CANCELLED)
-        _downloads.value = _downloads.value + (id to cancelled)
+        fileIdToDownloadId.remove(dl.fileId)
+        _downloads.value = _downloads.value + (id to dl.copy(status = DownloadStatus.CANCELLED))
+        Log.d(TAG, "Cancelled: ${dl.title}")
+    }
+
+    fun retryDownload(id: String) {
+        val dl = _downloads.value[id] ?: return
+        if (dl.status == DownloadStatus.FAILED || dl.status == DownloadStatus.CANCELLED) {
+            startDownload(id, dl.title, dl.fileId, dl.totalBytes)
+        }
     }
 
     fun getDownloadedPath(id: String): String? {
         return _downloads.value[id]?.localPath
     }
 
+    /** מחזיר path שאפשר להעביר ל-ExoPlayer — גם אם ההורדה עדיין בתהליך */
+    fun getStreamablePath(id: String): String? {
+        val dl = _downloads.value[id] ?: return null
+        return when (dl.status) {
+            DownloadStatus.COMPLETED -> dl.localPath
+            DownloadStatus.DOWNLOADING -> dl.localPath // TDLib כותב לקובץ בזמן אמת
+            else -> null
+        }
+    }
+
     fun deleteDownload(id: String) {
         val dl = _downloads.value[id] ?: return
         dl.localPath?.let { File(it).delete() }
+        fileIdToDownloadId.remove(dl.fileId)
         _downloads.value = _downloads.value - id
+        Log.d(TAG, "Deleted: ${dl.title}")
     }
 
-    private fun updateDownloadProgress(progress: DownloadProgress) {
-        val entry = _downloads.value.entries.find { it.value.fileId == progress.fileId } ?: return
-        val updated = entry.value.copy(
+    private fun updateProgress(progress: DownloadProgress) {
+        val id = fileIdToDownloadId[progress.fileId] ?: return
+        val current = _downloads.value[id] ?: return
+
+        val newStatus = when {
+            progress.localPath != null -> DownloadStatus.COMPLETED
+            progress.downloaded > 0   -> DownloadStatus.DOWNLOADING
+            else                       -> current.status
+        }
+
+        _downloads.value = _downloads.value + (id to current.copy(
             downloadedBytes = progress.downloaded,
-            localPath = progress.localPath,
-            status = if (progress.localPath != null) DownloadStatus.COMPLETED else DownloadStatus.DOWNLOADING
-        )
-        _downloads.value = _downloads.value + (entry.key to updated)
+            totalBytes      = if (progress.total > 0) progress.total else current.totalBytes,
+            localPath       = progress.localPath ?: current.localPath,
+            status          = newStatus
+        ))
     }
 }

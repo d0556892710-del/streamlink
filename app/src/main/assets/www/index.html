@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>StreamLink</title>
 <style>
   :root {
@@ -18,53 +18,72 @@
     --radius: 12px;
     --nav-h: 60px;
     --top-h: 56px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
   }
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:'Heebo',sans-serif; overflow:hidden; }
 
   /* TOP BAR */
   .topbar {
-    position:fixed; top:0; right:0; left:0; height:var(--top-h);
-    background:linear-gradient(180deg,rgba(8,9,13,0.98) 0%,rgba(8,9,13,0.0) 100%);
+    position:fixed; top:0; right:0; left:0;
+    height:calc(var(--top-h) + var(--safe-top));
+    padding-top:var(--safe-top);
+    background:rgba(8,9,13,0.96);
     display:flex; align-items:center; justify-content:space-between;
-    padding:0 16px; z-index:100;
+    padding-right:16px; padding-left:16px; z-index:100;
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid rgba(255,255,255,0.05);
   }
   .topbar-logo { font-size:22px; font-weight:900; color:var(--accent); letter-spacing:-1px; }
-  .topbar-actions { display:flex; gap:12px; align-items:center; }
-  .topbar-btn { background:none; border:none; color:var(--text); font-size:20px; cursor:pointer; padding:4px; }
+  .topbar-actions { display:flex; gap:4px; align-items:center; }
+  .topbar-btn { background:none; border:none; color:var(--text2); cursor:pointer; padding:8px; display:flex; align-items:center; justify-content:center; }
+  .topbar-btn svg { width:22px; height:22px; }
+
   .search-bar {
-    display:none; position:fixed; top:0; right:0; left:0; height:var(--top-h);
-    background:var(--bg); z-index:200; padding:8px 16px; gap:10px;
+    display:none; position:fixed; top:0; right:0; left:0;
+    height:calc(var(--top-h) + var(--safe-top));
+    padding-top:var(--safe-top);
+    background:var(--bg); z-index:200; padding-right:16px; padding-left:16px; gap:10px;
     align-items:center;
   }
   .search-bar.active { display:flex; }
   .search-input {
     flex:1; background:var(--surface); border:1.5px solid var(--surface2); border-radius:24px;
     padding:10px 16px; color:var(--text); font-size:16px; outline:none;
-    font-family:'Heebo',sans-serif;
+    font-family:'Heebo',sans-serif; min-width:0;
   }
   .search-input::placeholder { color:var(--text3); }
-  .search-cancel { background:none; border:none; color:var(--accent); font-size:15px; cursor:pointer; white-space:nowrap; font-family:'Heebo',sans-serif; }
+  .search-cancel { background:none; border:none; color:var(--accent); font-size:15px; cursor:pointer; white-space:nowrap; font-family:'Heebo',sans-serif; flex-shrink:0; }
 
   /* PAGES */
-  .pages { position:fixed; top:0; right:0; left:0; bottom:var(--nav-h); overflow:hidden; }
-  .page { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; }
+  .pages {
+    position:fixed;
+    top:calc(var(--top-h) + var(--safe-top));
+    right:0; left:0;
+    bottom:calc(var(--nav-h) + var(--safe-bot));
+    overflow:hidden;
+  }
+  .page { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; -webkit-overflow-scrolling:touch; }
   .page.active { display:block; }
   .page-scroll { padding-bottom:20px; }
 
   /* BOTTOM NAV */
   .bottom-nav {
-    position:fixed; bottom:0; right:0; left:0; height:var(--nav-h);
-    background:rgba(17,19,26,0.97); border-top:1px solid rgba(255,255,255,0.06);
-    display:flex; align-items:center; justify-content:space-around; z-index:100;
+    position:fixed; bottom:0; right:0; left:0;
+    height:calc(var(--nav-h) + var(--safe-bot));
+    padding-bottom:var(--safe-bot);
+    background:rgba(11,12,17,0.98); border-top:1px solid rgba(255,255,255,0.07);
+    display:flex; align-items:flex-start; justify-content:space-around; z-index:100;
     backdrop-filter:blur(20px);
   }
-  .nav-item { display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; padding:8px 16px; flex:1; }
-  .nav-icon { font-size:22px; transition:transform 0.2s; }
+  .nav-item { display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; padding:10px 12px 0; flex:1; }
+  .nav-icon { width:24px; height:24px; color:var(--text3); transition:color 0.2s; }
+  .nav-icon svg { width:24px; height:24px; }
   .nav-label { font-size:10px; color:var(--text3); transition:color 0.2s; font-family:'Heebo',sans-serif; }
-  .nav-item.active .nav-icon { transform:scale(1.1); }
+  .nav-item.active .nav-icon { color:var(--accent); }
   .nav-item.active .nav-label { color:var(--accent); }
-  .nav-dot { width:4px; height:4px; border-radius:50%; background:var(--accent); margin-top:1px; opacity:0; transition:opacity 0.2s; }
+  .nav-dot { width:4px; height:4px; border-radius:50%; background:var(--accent); margin-top:2px; opacity:0; transition:opacity 0.2s; }
   .nav-item.active .nav-dot { opacity:1; }
 
   /* HERO */
@@ -209,7 +228,7 @@
   .settings-item:last-of-type { border-radius:0 0 var(--radius) var(--radius); margin-bottom:8px; }
   .settings-item:only-of-type { border-radius:var(--radius); }
   .settings-label { display:flex; align-items:center; gap:10px; font-size:14px; }
-  .settings-icon { font-size:18px; }
+  .settings-icon { font-size:18px; display:flex; align-items:center; justify-content:center; width:22px; height:22px; color:var(--text3); flex-shrink:0; }
   .settings-value { font-size:13px; color:var(--text3); }
   .toggle { width:44px; height:26px; background:var(--surface2); border-radius:13px; position:relative; cursor:pointer; transition:background 0.2s; }
   .toggle.on { background:var(--accent); }
@@ -329,14 +348,18 @@
 <div class="topbar" id="topbar">
   <div class="topbar-logo">StreamLink</div>
   <div class="topbar-actions">
-    <button class="topbar-btn" onclick="openSearch()">🔍</button>
-    <button class="topbar-btn" onclick="showTelegramLogin()">📡</button>
+    <button class="topbar-btn" onclick="openSearch()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <button class="topbar-btn" onclick="showTelegramLogin()" id="tgTopBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
   </div>
 </div>
 
 <!-- SEARCH BAR -->
 <div class="search-bar" id="searchBar">
-  <input class="search-input" id="searchInput" placeholder="חפש סרטים וסדרות..." onkeydown="onSearchKey(event)" autofocus>
+  <input class="search-input" id="searchInput" type="search" placeholder="חפש סרטים וסדרות..." onkeydown="onSearchKey(event)" oninput="onSearchInput(this.value)">
   <button class="search-cancel" onclick="closeSearch()">ביטול</button>
 </div>
 
@@ -344,208 +367,35 @@
 <div class="pages">
 
   <!-- HOME -->
+  <!-- HOME -->
   <div class="page active" id="page-home">
     <div class="page-scroll">
-      <!-- Hero -->
-      <div class="hero">
-        <div class="hero-bg"></div>
-        <div class="hero-gradient"></div>
-        <div class="hero-content">
-          <div class="hero-badge">🔥 טרנדינג עכשיו</div>
-          <div class="hero-title">הנוקמים: אינפיניטי וור</div>
-          <div class="hero-meta">
-            <span class="rating">★ 8.4</span>
-            <span>2018</span>
-            <span>149 דק'</span>
-            <span>4K</span>
-          </div>
-          <div class="hero-desc">ת'אנוס מחפש את אבני האינסוף. הנוקמים חייבים להתאחד כדי להציל את היקום.</div>
-          <div class="hero-btns">
-            <button class="btn-play" onclick="openPlayer('הנוקמים: אינפיניטי וור')">▶ צפה עכשיו</button>
-            <button class="btn-info" onclick="openSheet('הנוקמים: אינפיניטי וור','8.4','2018','149 דק\'','פעולה/הרפתקאות','ת\'אנוס מחפש את אבני האינסוף. הנוקמים חייבים להתאחד כדי להציל את היקום מהשמדה.')">מידע</button>
-          </div>
-        </div>
+      <div id="continueSection" style="display:none">
+        <div class="section-header"><span class="section-title">המשך צפייה</span></div>
+        <div class="h-scroll" id="continueList"></div>
       </div>
-
-      <!-- Continue Watching -->
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title">המשך צפייה</span>
-          <span class="section-more">הכל</span>
-        </div>
-        <div class="h-scroll">
-          <div class="continue-card" onclick="openPlayer('ספיידרמן: בלי דרך הביתה')">
-            <div class="continue-thumb">🕷️<div class="continue-progress"><div class="continue-progress-fill" style="width:65%"></div></div><div class="continue-play">▶</div></div>
-            <div class="continue-info"><div class="continue-title">ספיידרמן: בלי דרך הביתה</div><div class="continue-time">נשאר 55 דק'</div></div>
-          </div>
-          <div class="continue-card" onclick="openPlayer('באטמן')">
-            <div class="continue-thumb">🦇<div class="continue-progress"><div class="continue-progress-fill" style="width:30%"></div></div><div class="continue-play">▶</div></div>
-            <div class="continue-info"><div class="continue-title">באטמן</div><div class="continue-time">נשאר 2:10 שע'</div></div>
-          </div>
-          <div class="continue-card" onclick="openPlayer('דיוני')">
-            <div class="continue-thumb">🏜️<div class="continue-progress"><div class="continue-progress-fill" style="width:80%"></div></div><div class="continue-play">▶</div></div>
-            <div class="continue-info"><div class="continue-title">דיוני</div><div class="continue-time">נשאר 30 דק'</div></div>
-          </div>
-        </div>
+      <div style="text-align:center;padding:80px 32px 40px" id="homeEmpty">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" style="margin-bottom:20px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <div style="font-size:20px;font-weight:700;color:#ccc;margin-bottom:8px">מה רוצים לצפות?</div>
+        <div style="font-size:14px;color:#666;line-height:1.6">חפש סרט או סדרה דרך כפתור החיפוש למעלה</div>
+        <button onclick="openSearch()" style="margin-top:24px;background:var(--accent);border:none;color:#fff;border-radius:24px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif">חפש עכשיו</button>
       </div>
-
-      <!-- New Movies -->
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title">סרטים חדשים</span>
-          <span class="section-more">הכל</span>
-        </div>
-        <div class="h-scroll" id="newMovies">
-          <div class="card" style="width:120px" onclick="openSheet('אופנהיימר','8.3','2023','180 דק\'','דרמה/היסטוריה','הסיפור של האיש שהמציא את פצצת האטום.')">
-            <div class="card-poster">💣</div>
-            <div class="card-title">אופנהיימר</div>
-            <div class="card-meta">2023 • 4K</div>
-          </div>
-          <div class="card" style="width:120px" onclick="openSheet('בארבי','7.0','2023','114 דק\'','קומדיה','בארבי וקן עוזבים את ברביילנד ונסעים לעולם האמיתי.')">
-            <div class="card-poster">💗</div>
-            <div class="card-title">בארבי</div>
-            <div class="card-meta">2023 • 1080p</div>
-          </div>
-          <div class="card" style="width:120px" onclick="openSheet('גוארדיאנס 3','7.9','2023','150 דק\'','פעולה','המשמר הגלקטי בהרפתקה הסופית שלהם.')">
-            <div class="card-poster">🚀</div>
-            <div class="card-title">גוארדיאנס 3</div>
-            <div class="card-meta">2023 • 4K</div>
-          </div>
-          <div class="card" style="width:120px" onclick="openSheet('מיאו מיאו','7.5','2023','92 דק\'','אנימציה','הרפתקת חתולים מיוחדת.')">
-            <div class="card-poster">🐱</div>
-            <div class="card-title">מיאו מיאו</div>
-            <div class="card-meta">2023 • 1080p</div>
-          </div>
-          <div class="card" style="width:120px" onclick="openSheet('אסטרואיד סיטי','6.9','2023','105 דק\'','קומדיה/דרמה','סיפור קפקאי בעיירת מדבר אמריקאית.')">
-            <div class="card-poster">☄️</div>
-            <div class="card-title">אסטרואיד סיטי</div>
-            <div class="card-meta">2023 • 1080p</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Popular Series -->
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title">סדרות פופולריות</span>
-          <span class="section-more">הכל</span>
-        </div>
-        <div class="h-scroll">
-          <div class="card" style="width:120px" onclick="openSheet('The Last of Us','8.8','2023','60 דק\'','דרמה/מתח','סיפור הישרדות פוסט-אפוקליפטי.')">
-            <div class="card-poster">🍄</div>
-            <div class="card-title">The Last of Us</div>
-            <div class="card-meta">עונה 2 • 4K</div>
-          </div>
-          <div class="card" style="width:120px" onclick="openSheet('האדיון','8.5','2023','55 דק\'','פנטזיה','עולם דרקונים ומלחמות כיסא.')">
-            <div class="card-poster">🐉</div>
-            <div class="card-title">האדיון</div>
-            <div class="card-meta">עונה 2 • 1080p</div>
-          </div>
-          <div class="card" style="width:120px" onclick="openSheet('בית הנייר','8.2','2022','70 דק\'','פשע/מתח','שוד גדול בבנק ספרד.')">
-            <div class="card-poster">💰</div>
-            <div class="card-title">בית הנייר</div>
-            <div class="card-meta">עונה 5 • 1080p</div>
-          </div>
-          <div class="card" style="width:120px" onclick="openSheet('ברקינג בד','9.5','2008','45 דק\'','פשע/דרמה','כימאי הופך לסוחר סמים.')">
-            <div class="card-poster">🧪</div>
-            <div class="card-title">ברקינג בד</div>
-            <div class="card-meta">עונה 5 • 4K</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action -->
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title">פעולה ואקשן</span>
-          <span class="section-more">הכל</span>
-        </div>
-        <div class="h-scroll">
-          <div class="card" style="width:100px" onclick="openSheet('טופ גאן: מאברים','8.3','2022','130 דק\'','פעולה','מייווריק חוזר לאקדמיית הטייסים.')">
-            <div class="card-poster" style="font-size:28px">✈️</div>
-            <div class="card-title">טופ גאן 2</div>
-            <div class="card-meta">4K</div>
-          </div>
-          <div class="card" style="width:100px" onclick="openSheet('ג\'ון וויק 4','7.7','2023','169 דק\'','פעולה','ג\'ון וויק נלחם על חירותו.')">
-            <div class="card-poster" style="font-size:28px">🔫</div>
-            <div class="card-title">ג'ון וויק 4</div>
-            <div class="card-meta">4K</div>
-          </div>
-          <div class="card" style="width:100px" onclick="openSheet('מהיר ועצבני 10','5.9','2023','141 דק\'','פעולה','מירוץ אחרון של דום.')">
-            <div class="card-poster" style="font-size:28px">🏎️</div>
-            <div class="card-title">מהיר ועצבני 10</div>
-            <div class="card-meta">1080p</div>
-          </div>
-          <div class="card" style="width:100px" onclick="openSheet('מיסיון אימפוסיבל 7','7.5','2023','163 דק\'','ריגול/פעולה','אטאן האנט במשימה בלתי אפשרית.')">
-            <div class="card-poster" style="font-size:28px">🕵️</div>
-            <div class="card-title">מיסיון 7</div>
-            <div class="card-meta">4K</div>
-          </div>
-          <div class="card" style="width:100px" onclick="openSheet('אנטמן 3','6.1','2023','125 דק\'','פעולה/קומדיה','סקוט לאנג מתמודד עם קאנג.')">
-            <div class="card-poster" style="font-size:28px">🐜</div>
-            <div class="card-title">אנטמן 3</div>
-            <div class="card-meta">1080p</div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 
   <!-- LIBRARY -->
   <div class="page" id="page-library">
-    <div class="page-scroll" style="padding-top:60px">
+    <div class="page-scroll">
       <div class="lib-tabs">
         <button class="lib-tab active" onclick="switchLibTab(this,'all')">הכל</button>
         <button class="lib-tab" onclick="switchLibTab(this,'movies')">סרטים</button>
         <button class="lib-tab" onclick="switchLibTab(this,'series')">סדרות</button>
-        <button class="lib-tab" onclick="switchLibTab(this,'saved')">שמורים</button>
       </div>
       <div class="grid" id="libraryGrid">
-        <div class="card" onclick="openSheet('אופנהיימר','8.3','2023','180 דק\'','דרמה','הסיפור של המציא פצצת האטום.')">
-          <div class="card-poster">💣</div>
-          <div class="card-title">אופנהיימר</div>
-          <div class="card-meta">2023</div>
-        </div>
-        <div class="card" onclick="openSheet('ספיידרמן','8.2','2021','148 דק\'','פעולה','ספיידרמן מתמודד עם מולטיוורס.')">
-          <div class="card-poster">🕷️</div>
-          <div class="card-title">ספיידרמן</div>
-          <div class="card-meta">2021</div>
-        </div>
-        <div class="card" onclick="openSheet('באטמן','7.9','2022','176 דק\'','פשע','באטמן חוקר רוצח סדרתי.')">
-          <div class="card-poster">🦇</div>
-          <div class="card-title">באטמן</div>
-          <div class="card-meta">2022</div>
-        </div>
-        <div class="card" onclick="openSheet('דיוני','8.0','2021','155 דק\'','מד\"ב','פול אטריידס מגיע לכוכב ארקיס.')">
-          <div class="card-poster">🏜️</div>
-          <div class="card-title">דיוני</div>
-          <div class="card-meta">2021</div>
-        </div>
-        <div class="card" onclick="openSheet('בארבי','7.0','2023','114 דק\'','קומדיה','בארבי בעולם האמיתי.')">
-          <div class="card-poster">💗</div>
-          <div class="card-title">בארבי</div>
-          <div class="card-meta">2023</div>
-        </div>
-        <div class="card" onclick="openSheet('טופ גאן 2','8.3','2022','130 דק\'','פעולה','מייווריק חוזר.')">
-          <div class="card-poster">✈️</div>
-          <div class="card-title">טופ גאן 2</div>
-          <div class="card-meta">2022</div>
-        </div>
-        <div class="card" onclick="openSheet('The Last of Us','8.8','2023','60 דק\'','דרמה','הישרדות פוסט-אפוקליפטי.')">
-          <div class="card-poster">🍄</div>
-          <div class="card-title">Last of Us</div>
-          <div class="card-meta">סדרה</div>
-        </div>
-        <div class="card" onclick="openSheet('ברקינג בד','9.5','2008','45 דק\'','פשע','כימאי → סוחר סמים.')">
-          <div class="card-poster">🧪</div>
-          <div class="card-title">ברקינג בד</div>
-          <div class="card-meta">סדרה</div>
-        </div>
-        <div class="card" onclick="openSheet('גוארדיאנס 3','7.9','2023','150 דק\'','פעולה','משמר גלקטי.')">
-          <div class="card-poster">🚀</div>
-          <div class="card-title">גוארדיאנס 3</div>
-          <div class="card-meta">2023</div>
+        <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#555">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:16px;opacity:0.4"><rect x="2" y="7" width="4" height="17"/><rect x="10" y="4" width="4" height="20"/><rect x="18" y="2" width="4" height="22"/></svg>
+          <div style="font-size:16px;color:#666">הספרייה ריקה</div>
+          <div style="font-size:13px;margin-top:6px;color:#444">הורדות שתסיים יופיעו כאן</div>
         </div>
       </div>
     </div>
@@ -553,16 +403,15 @@
 
   <!-- DOWNLOADS -->
   <div class="page" id="page-downloads">
-    <div class="page-scroll" style="padding-top:70px">
-      <div class="section-header">
+    <div class="page-scroll">
+      <div class="section-header" style="padding:16px 16px 8px">
         <span class="section-title">הורדות</span>
-        <span class="section-more" onclick="showToast('ניהול הורדות')">ניהול</span>
       </div>
       <div id="downloadsContainer">
-        <div style="text-align:center;padding:60px 20px;color:#888">
-          <div style="font-size:50px;margin-bottom:16px">⬇️</div>
-          <div style="font-size:18px;font-weight:600;color:#ccc">אין הורדות</div>
-          <div style="font-size:14px;margin-top:8px">חפש סרט ולחץ על הורד</div>
+        <div style="text-align:center;padding:60px 20px;color:#555">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:16px;opacity:0.4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <div style="font-size:16px;color:#666">אין הורדות</div>
+          <div style="font-size:13px;margin-top:6px;color:#444">חפש סרט ולחץ הורד</div>
         </div>
       </div>
     </div>
@@ -570,72 +419,91 @@
 
   <!-- SOURCES -->
   <div class="page" id="page-sources">
-    <div class="page-scroll" style="padding-top:70px">
-      <div class="section-header">
+    <div class="page-scroll">
+      <div class="section-header" style="padding:16px 16px 8px">
         <span class="section-title">מקורות תוכן</span>
       </div>
-      <div class="source-card" onclick="showToast('מתחבר לבוט...')">
-        <div class="source-icon">👑</div>
-        <div class="source-info">
-          <div class="source-name">מלך הטלגרם</div>
-          <div class="source-status">@King_Of_Telegram_Beta_bot</div>
+
+      <!-- Active bot card -->
+      <div id="sourceBotCard" style="margin:8px 16px;background:var(--surface);border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:14px;padding:16px">
+          <div style="width:44px;height:44px;background:rgba(229,9,20,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:15px;font-weight:700;color:#fff">מלך הטלגרם</div>
+            <div style="font-size:12px;color:#666;margin-top:2px" id="sourceBotName">@King_Of_Telegram_Beta_bot</div>
+          </div>
+          <div style="font-size:11px;font-weight:600;color:#4CAF50;background:rgba(76,175,80,0.1);padding:4px 10px;border-radius:20px" id="sourceBotStatus">פעיל</div>
         </div>
-        <div class="source-badge">פעיל</div>
+        <!-- Chat with bot button -->
+        <div style="border-top:1px solid rgba(255,255,255,0.06);display:flex">
+          <button onclick="chatWithBot()" style="flex:1;background:none;border:none;color:var(--accent);font-size:14px;font-weight:600;padding:12px;cursor:pointer;font-family:Heebo,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            פתח צ'אט עם הבוט
+          </button>
+          <div style="width:1px;background:rgba(255,255,255,0.06)"></div>
+          <button onclick="switchBot()" style="flex:1;background:none;border:none;color:var(--text3);font-size:14px;padding:12px;cursor:pointer;font-family:Heebo,sans-serif">החלף בוט</button>
+        </div>
       </div>
-      <button class="add-source-btn" onclick="showAddSource()">
-        <span style="font-size:20px">➕</span> הוסף מקור חדש
+
+      <!-- Telegram login status -->
+      <div id="tgStatusCard" style="margin:8px 16px;background:var(--surface);border-radius:12px;padding:16px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:44px;height:44px;background:rgba(255,255,255,0.05);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700;color:#fff">חשבון טלגרם</div>
+            <div style="font-size:12px;color:#666;margin-top:2px" id="tgAccountStatus">לא מחובר — נדרש לחיפוש</div>
+          </div>
+          <button onclick="showTelegramLogin()" id="tgConnectBtn" style="background:var(--accent);border:none;color:#fff;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">התחבר</button>
+        </div>
+      </div>
+
+      <button onclick="showAddSource()" style="display:flex;align-items:center;gap:10px;width:calc(100% - 32px);margin:8px 16px;background:none;border:1px dashed rgba(255,255,255,0.12);border-radius:12px;color:var(--text3);font-size:14px;padding:14px 16px;cursor:pointer;font-family:Heebo,sans-serif">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        הוסף בוט נוסף
       </button>
-      <div style="padding:0 16px">
-        <div style="font-size:13px;color:var(--text3);line-height:1.6">
-          חבר בוטי טלגרם כמקורות תוכן. האפליקציה תחפש ותוריד דרכם אוטומטית.<br><br>
-          לחיבור מלא נדרשת התחברות עם מספר הטלפון שלך.
-        </div>
-      </div>
     </div>
   </div>
 
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
-    <div class="page-scroll" style="padding-top:70px">
-      <div class="section-header"><span class="section-title">הגדרות</span></div>
+    <div class="page-scroll">
+      <div class="section-header" style="padding:16px 16px 8px"><span class="section-title">הגדרות</span></div>
 
       <div class="settings-section"><div class="settings-title">חשבון</div></div>
       <div class="settings-item" onclick="showTelegramLogin()">
-        <div class="settings-label"><span class="settings-icon">📱</span>חשבון טלגרם</div>
-        <div class="settings-value">לא מחובר ›</div>
+        <div class="settings-label">
+          <span class="settings-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          חשבון טלגרם
+        </div>
+        <div class="settings-value" id="settingsTgStatus">לא מחובר ›</div>
       </div>
 
       <div class="settings-section"><div class="settings-title">הורדות</div></div>
-      <div class="settings-item">
-        <div class="settings-label"><span class="settings-icon">📶</span>הורד ב-WiFi בלבד</div>
-        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      <div class="settings-item" onclick="toggleWifiOnly(this)">
+        <div class="settings-label">
+          <span class="settings-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>
+          הורד ב-WiFi בלבד
+        </div>
+        <div class="toggle on" id="wifiOnlyToggle"></div>
       </div>
-      <div class="settings-item">
-        <div class="settings-label"><span class="settings-icon">💾</span>איכות הורדה</div>
-        <div class="settings-value">1080p ›</div>
-      </div>
-      <div class="settings-item">
-        <div class="settings-label"><span class="settings-icon">📁</span>נתיב שמירה</div>
-        <div class="settings-value">פנימי ›</div>
-      </div>
-
-      <div class="settings-section"><div class="settings-title">ממשק</div></div>
-      <div class="settings-item">
-        <div class="settings-label"><span class="settings-icon">🌙</span>מצב כהה</div>
-        <div class="toggle on"></div>
-      </div>
-      <div class="settings-item">
-        <div class="settings-label"><span class="settings-icon">🔔</span>התראות</div>
-        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
-      </div>
-      <div class="settings-item">
-        <div class="settings-label"><span class="settings-icon">🌐</span>שפה</div>
-        <div class="settings-value">עברית ›</div>
+      <div class="settings-item" onclick="chooseQuality()">
+        <div class="settings-label">
+          <span class="settings-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+          איכות הורדה
+        </div>
+        <div class="settings-value" id="qualityValue">הכי גבוהה ›</div>
       </div>
 
       <div class="settings-section"><div class="settings-title">אודות</div></div>
       <div class="settings-item">
-        <div class="settings-label"><span class="settings-icon">ℹ️</span>גרסה</div>
+        <div class="settings-label">
+          <span class="settings-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+          גרסה
+        </div>
         <div class="settings-value">1.0.0</div>
       </div>
 
@@ -648,27 +516,27 @@
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <div class="nav-item active" id="nav-home" onclick="switchPage('home')">
-    <div class="nav-icon">🏠</div>
+    <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
     <div class="nav-label">בית</div>
     <div class="nav-dot"></div>
   </div>
   <div class="nav-item" id="nav-library" onclick="switchPage('library')">
-    <div class="nav-icon">🎬</div>
+    <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="4" height="17"/><rect x="10" y="4" width="4" height="20"/><rect x="18" y="2" width="4" height="22"/></svg></div>
     <div class="nav-label">ספרייה</div>
     <div class="nav-dot"></div>
   </div>
   <div class="nav-item" id="nav-downloads" onclick="switchPage('downloads')">
-    <div class="nav-icon">⬇️</div>
+    <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
     <div class="nav-label">הורדות</div>
     <div class="nav-dot"></div>
   </div>
   <div class="nav-item" id="nav-sources" onclick="switchPage('sources')">
-    <div class="nav-icon">📡</div>
+    <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg></div>
     <div class="nav-label">מקורות</div>
     <div class="nav-dot"></div>
   </div>
   <div class="nav-item" id="nav-settings" onclick="switchPage('settings')">
-    <div class="nav-icon">⚙️</div>
+    <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
     <div class="nav-label">הגדרות</div>
     <div class="nav-dot"></div>
   </div>
@@ -861,23 +729,49 @@ window.onDownloadsUpdate = function(list) {
   for (var i = 0; i < list.length; i++) {
     var d = list[i];
     var pct = d.total > 0 ? Math.round(d.downloaded * 100 / d.total) : 0;
-    var statusMap = {
-      'PENDING':'⏳ ממתין','DOWNLOADING':'⬇️ מוריד... '+pct+'%',
-      'COMPLETED':'✅ הושלם','FAILED':'❌ נכשל','CANCELLED':'⛔ בוטל'
-    };
-    var statusText = statusMap[d.status] || d.status;
-    var canPlay = d.status === 'COMPLETED' && d.path;
-    html += '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid #1a1a2e">' +
-      '<div style="width:50px;height:70px;background:#1a1a2e;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎬</div>' +
+    var dlMb = (d.downloaded / 1048576).toFixed(1);
+    var totMb = (d.total / 1048576).toFixed(1);
+    var isDownloading = d.status === 'DOWNLOADING';
+    var isCompleted  = d.status === 'COMPLETED';
+    var isFailed     = d.status === 'FAILED';
+    var isCancelled  = d.status === 'CANCELLED';
+
+    var statusColor = isCompleted ? '#4CAF50' : isFailed || isCancelled ? '#f44336' : '#E50914';
+    var statusText  = isDownloading ? dlMb + ' / ' + totMb + ' MB · ' + pct + '%'
+                    : isCompleted   ? '✓ הושלם · ' + totMb + ' MB'
+                    : isFailed      ? '✗ נכשל'
+                    : isCancelled   ? '⛔ בוטל'
+                    : '⏳ ממתין';
+
+    // כפתורי פעולה
+    var actions = '';
+    if (isDownloading) {
+      actions = '<button onclick="callNative(\'streamFile\',\''+esc(d.id)+'\',\''+esc(d.title)+'\')" ' +
+        'style="background:#1a237e;border:none;color:#fff;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:11px;white-space:nowrap">▶ צפייה ישירה</button>' +
+        ' <button onclick="callNative(\'cancelDownload\',\''+esc(d.id)+'\')" ' +
+        'style="background:#333;border:none;color:#ccc;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:11px">✕ בטל</button>';
+    } else if (isCompleted) {
+      actions = '<button onclick="callNative(\'playFile\',\''+esc(d.path)+'\',\''+esc(d.title)+'\')" ' +
+        'style="background:var(--accent);border:none;color:#fff;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600">▶ הפעל</button>' +
+        ' <button onclick="callNative(\'deleteDownload\',\''+esc(d.id)+'\')" ' +
+        'style="background:#222;border:1px solid #333;color:#888;border-radius:20px;padding:6px 10px;cursor:pointer;font-size:11px">🗑</button>';
+    } else if (isFailed || isCancelled) {
+      actions = '<button onclick="callNative(\'retryDownload\',\''+esc(d.id)+'\')" ' +
+        'style="background:#333;border:none;color:#ccc;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:11px">↺ נסה שוב</button>' +
+        ' <button onclick="callNative(\'deleteDownload\',\''+esc(d.id)+'\')" ' +
+        'style="background:#222;border:1px solid #333;color:#888;border-radius:20px;padding:6px 10px;cursor:pointer;font-size:11px">🗑</button>';
+    }
+
+    html += '<div style="display:flex;gap:14px;padding:16px;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+      '<div style="width:54px;height:76px;background:#111827;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">🎬</div>' +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + d.title + '</div>' +
-        '<div style="font-size:11px;color:#888;margin:4px 0">' + formatBytes(d.total) + '</div>' +
-        '<div style="height:3px;background:#1a1a2e;border-radius:2px;margin:6px 0">' +
-          '<div style="height:100%;width:' + pct + '%;background:var(--accent);border-radius:2px;transition:width 0.3s"></div>' +
+        '<div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(d.title) + '</div>' +
+        '<div style="height:4px;background:rgba(255,255,255,0.08);border-radius:4px;margin-bottom:6px;overflow:hidden">' +
+          '<div style="height:100%;width:'+pct+'%;background:'+(isCompleted?'#4CAF50':'var(--accent)')+';border-radius:4px;transition:width 0.5s ease"></div>' +
         '</div>' +
-        '<div style="font-size:12px;color:#aaa">' + statusText + '</div>' +
+        '<div style="font-size:11px;color:'+statusColor+';margin-bottom:8px">' + statusText + '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' + actions + '</div>' +
       '</div>' +
-      (canPlay ? '<button onclick="callNative(\'playFile\',\'' + esc(d.path) + '\',\'' + esc(d.title) + '\')" style="background:var(--accent);border:none;color:#fff;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:16px;flex-shrink:0">▶</button>' : '') +
     '</div>';
   }
   container.innerHTML = html;
@@ -1086,11 +980,74 @@ function tgAction() {
 // =====================================================
 function showAddSource() {
   var username = prompt('שם משתמש של הבוט (ללא @):');
-  if (username) {
-    activeBotUsername = username.replace('@', '');
-    callNative('setActiveBotUsername', activeBotUsername);
-    showToast('✅ בוט הוגדר: @' + activeBotUsername);
+  if (username && username.trim()) {
+    var bot = username.trim().replace('@', '');
+    activeBotUsername = bot;
+    callNative('setActiveBotUsername', bot);
+    var nameEl = document.getElementById('sourceBotName');
+    if (nameEl) nameEl.textContent = '@' + bot;
+    showToast('✅ בוט הוגדר: @' + bot);
   }
+}
+
+function chatWithBot() {
+  var bot = activeBotUsername || 'King_Of_Telegram_Beta_bot';
+  // Try native Telegram deep link first
+  var url = 'tg://resolve?domain=' + bot;
+  try {
+    if (window.StreamLinkBridge) {
+      window.StreamLinkBridge.openUrl('https://t.me/' + bot);
+    } else {
+      window.location.href = url;
+    }
+  } catch(e) {
+    window.location.href = 'https://t.me/' + bot;
+  }
+}
+
+function switchBot() {
+  showAddSource();
+}
+
+// =====================================================
+// SETTINGS ACTIONS
+// =====================================================
+function toggleWifiOnly(el) {
+  var toggle = document.getElementById('wifiOnlyToggle');
+  if (!toggle) return;
+  var isOn = toggle.classList.toggle('on');
+  callNative('setWifiOnly', isOn ? 'true' : 'false');
+  showToast(isOn ? '✅ הורדה ב-WiFi בלבד' : 'הורדה על כל רשת');
+}
+
+function chooseQuality() {
+  var opts = ['הכי גבוהה', '1080p', '720p', '480p'];
+  var cur = (document.getElementById('qualityValue') || {}).textContent || 'הכי גבוהה';
+  var idx = opts.indexOf(cur.replace(' ›', ''));
+  var next = opts[(idx + 1) % opts.length];
+  var el = document.getElementById('qualityValue');
+  if (el) el.textContent = next + ' ›';
+  callNative('setDownloadQuality', next);
+  showToast('איכות הורדה: ' + next);
+}
+
+// =====================================================
+// SEARCH INPUT
+// =====================================================
+function onSearchInput(val) {
+  // Live search as user types — debounced
+  if (window._searchTimer) clearTimeout(window._searchTimer);
+  window._searchTimer = setTimeout(function() {
+    if (val && val.trim().length >= 2) {
+      doSearch(val.trim());
+    } else if (!val || val.trim().length === 0) {
+      // Clear results overlay
+      var overlay = document.getElementById('searchOverlay');
+      if (overlay) {
+        document.getElementById('searchResults').innerHTML = '';
+      }
+    }
+  }, 400);
 }
 
 // =====================================================
