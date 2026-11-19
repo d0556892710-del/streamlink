@@ -79,91 +79,125 @@ class TelegramClient @Inject constructor(
         )
 
         scope.launch {
-            sendRaw(TdApi.SetLogVerbosityLevel(0))
-            sendRaw(TdApi.SetTdlibParameters(
-                false,                              // use_test_dc
-                filesDir.absolutePath,              // database_directory
-                filesDir.absolutePath + "/files",   // files_directory
-                null,                               // database_encryption_key
-                true,                               // use_file_database
-                true,                               // use_chat_info_database
-                true,                               // use_message_database
-                false,                              // use_secret_chats
-                BuildConfig.TELEGRAM_API_ID,        // api_id
-                BuildConfig.TELEGRAM_API_HASH,      // api_hash
-                "he",                               // system_language_code
-                "Android",                          // device_model
-                "13",                               // system_version
-                "1.0.0",                            // application_version
-                true,                               // enable_storage_optimizer
-                false                               // ignore_file_names
-            ))
+            // Use default constructor + field assignment for TDLib 1.8+ compatibility
+            val logLevel = TdApi.SetLogVerbosityLevel()
+            logLevel.newVerbosityLevel = 0
+            sendRaw(logLevel)
+
+            val params = TdApi.SetTdlibParameters()
+            params.useTestDc = false
+            params.databaseDirectory = filesDir.absolutePath
+            params.filesDirectory = filesDir.absolutePath + "/files"
+            params.databaseEncryptionKey = ByteArray(0)
+            params.useFileDatabase = true
+            params.useChatInfoDatabase = true
+            params.useMessageDatabase = true
+            params.useSecretChats = false
+            params.apiId = BuildConfig.TELEGRAM_API_ID
+            params.apiHash = BuildConfig.TELEGRAM_API_HASH
+            params.systemLanguageCode = "he"
+            params.deviceModel = "Android"
+            params.systemVersion = "13"
+            params.applicationVersion = "1.0.0"
+            sendRaw(params)
         }
     }
 
     // ---- Auth flow ----
 
     suspend fun sendPhoneNumber(phone: String) {
-        sendRaw(TdApi.SetAuthenticationPhoneNumber(
-            phone,
-            TdApi.PhoneNumberAuthenticationSettings(false, false, false, false, null)
-        ))
+        val req = TdApi.SetAuthenticationPhoneNumber()
+        req.phoneNumber = phone
+        req.settings = TdApi.PhoneNumberAuthenticationSettings()
+        sendRaw(req)
     }
 
     suspend fun sendCode(code: String) {
-        sendRaw(TdApi.CheckAuthenticationCode(code))
+        val req = TdApi.CheckAuthenticationCode()
+        req.code = code
+        sendRaw(req)
     }
 
     suspend fun sendPassword(password: String) {
-        sendRaw(TdApi.CheckAuthenticationPassword(password))
+        val req = TdApi.CheckAuthenticationPassword()
+        req.password = password
+        sendRaw(req)
     }
 
     // ---- Bot interaction ----
 
     suspend fun sendMessageToBot(botUsername: String, text: String): Long {
         val chatId = getBotChatId(botUsername)
-        val result = sendRequest(TdApi.SendMessage(
-            chatId,
-            0, 0,
-            null, null,
-            TdApi.InputMessageText(
-                TdApi.FormattedText(text, emptyArray()),
-                false, false
-            )
-        ))
+
+        val formattedText = TdApi.FormattedText()
+        formattedText.text = text
+        formattedText.entities = emptyArray()
+
+        val inputText = TdApi.InputMessageText()
+        inputText.text = formattedText
+
+        val req = TdApi.SendMessage()
+        req.chatId = chatId
+        req.inputMessageContent = inputText
+
+        val result = sendRequest(req)
         return if (result is TdApi.Message) result.id else -1L
     }
 
     suspend fun pressInlineButton(chatId: Long, messageId: Long, callbackData: ByteArray) {
-        sendRequest(TdApi.GetCallbackQueryAnswer(
-            chatId, messageId,
-            TdApi.CallbackQueryPayloadData(callbackData)
-        ))
+        val payload = TdApi.CallbackQueryPayloadData()
+        payload.data = callbackData
+
+        val req = TdApi.GetCallbackQueryAnswer()
+        req.chatId = chatId
+        req.messageId = messageId
+        req.payload = payload
+
+        sendRequest(req)
     }
 
     // ---- File download ----
 
     suspend fun downloadFile(fileId: Int, priority: Int = 1): String? {
-        val result = sendRequest(TdApi.DownloadFile(fileId, priority, 0, 0, true))
+        val req = TdApi.DownloadFile()
+        req.fileId = fileId
+        req.priority = priority
+        req.offset = 0
+        req.limit = 0
+        req.synchronous = true
+
+        val result = sendRequest(req)
         return if (result is TdApi.File && result.local.isDownloadingCompleted) {
             result.local.path
         } else null
     }
 
     fun cancelDownload(fileId: Int) {
-        scope.launch { sendRaw(TdApi.CancelDownloadFile(fileId, false)) }
+        scope.launch {
+            val req = TdApi.CancelDownloadFile()
+            req.fileId = fileId
+            req.onlyIfPending = false
+            sendRaw(req)
+        }
     }
 
     // ---- Internal ----
 
     private suspend fun getBotChatId(username: String): Long {
         botChatIds[username]?.let { return it }
-        val result = sendRequest(TdApi.SearchPublicChat(username))
+
+        val req = TdApi.SearchPublicChat()
+        req.username = username
+
+        val result = sendRequest(req)
         val chatId = if (result is TdApi.Chat) result.id else error("Bot not found: $username")
         botChatIds[username] = chatId
 
         // Open chat so we can receive its messages
-        sendRaw(TdApi.OpenChat(chatId))
+        val openReq = TdApi.OpenChat()
+        openReq.chatId = chatId
+        sendRaw(openReq)
+
         return chatId
     }
 
@@ -191,9 +225,9 @@ class TelegramClient @Inject constructor(
     private fun handleNewMessage(msg: TdApi.Message) {
         scope.launch {
             val text = when (val c = msg.content) {
-                is TdApi.MessageText  -> c.text.text
+                is TdApi.MessageText     -> c.text.text
                 is TdApi.MessageDocument -> c.caption.text
-                is TdApi.MessageVideo -> c.caption.text
+                is TdApi.MessageVideo    -> c.caption.text
                 else -> null
             }
             _botMessages.emit(BotMessage(msg.id, text, msg.replyMarkup))
@@ -232,6 +266,7 @@ class TelegramClient @Inject constructor(
     }
 
     fun close() {
-        scope.launch { sendRaw(TdApi.Close()) }
+        val req = TdApi.Close()
+        scope.launch { sendRaw(req) }
     }
 }
